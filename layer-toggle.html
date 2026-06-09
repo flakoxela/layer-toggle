@@ -148,8 +148,28 @@
 
         // Apply default visibility
         LAYER_GROUPS.forEach((group) => {
-          setLayerVisibility(webmap, group.layerTitles, group.defaultVisible);
-        });
+          function setLayerVisibility(map, titles, visible) {
+  map.layers.forEach(layer => {
+    // Check top level
+    if (titles.includes(layer.title)) {
+      layer.visible = visible;
+    }
+    // For AdminBoundaries specifically — load it first then check sublayers
+    if (layer.title === "AdminBoundaries") {
+      layer.load().then(() => {
+        if (layer.layers) {
+          layer.layers.forEach(subLayer => {
+            console.log("AdminBoundaries sublayer found:", subLayer.title);
+            if (titles.includes(subLayer.title)) {
+              subLayer.visible = visible;
+              console.log("Toggled:", subLayer.title, visible);
+            }
+          });
+        }
+      });
+    }
+  });
+}
 
         setTimeout(() => { statusBar.textContent = ""; }, 2500);
 
