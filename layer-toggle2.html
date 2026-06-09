@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Layer Toggle Links</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      background: transparent;
+      padding: 12px;
+    }
+    h4 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+    .btn-group { display: flex; flex-direction: column; gap: 8px; }
+    .toggle-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1.5px solid #d1d5db;
+      background: #ffffff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: #1f2937;
+      transition: all 0.18s ease;
+      user-select: none;
+      width: 100%;
+      text-align: left;
+    }
+    .toggle-btn:hover { border-color: #0070d2; background: #f0f7ff; }
+    .toggle-btn.active { background: #0070d2; border-color: #0070d2; color: #ffffff; }
+    .toggle-btn .label-wrap { display: flex; align-items: center; gap: 8px; }
+    .toggle-btn .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #d1d5db; flex-shrink: 0; transition: background 0.18s;
+    }
+    .toggle-btn.active .dot { background: #ffffff; }
+    .toggle-btn .status { font-size: 11px; font-weight: 400; opacity: 0.75; }
+  </style>
+</head>
+<body>
+
+  <h4>Layer Controls</h4>
+  <div class="btn-group" id="btnGroup">
+    <button class="toggle-btn" id="btn-water" onclick="toggleLayer('water')">
+      <span class="label-wrap">
+        <span class="dot"></span>
+        <span>Water Purveyors</span>
+      </span>
+      <span class="status">Off</span>
+    </button>
+
+    <button class="toggle-btn" id="btn-fire" onclick="toggleLayer('fire')">
+      <span class="label-wrap">
+        <span class="dot"></span>
+        <span>Fire Districts</span>
+      </span>
+      <span class="status">Off</span>
+    </button>
+
+    <button class="toggle-btn" id="btn-pressure" onclick="toggleLayer('pressure')">
+      <span class="label-wrap">
+        <span class="dot"></span>
+        <span>Pressure Zone</span>
+      </span>
+      <span class="status">Off</span>
+    </button>
+  </div>
+
+  <script>
+    // ──────────────────────────────────────────────────────────────
+    // CONFIGURATION: Replace these with your actual ArcGIS Layer IDs
+    // ──────────────────────────────────────────────────────────────
+    const LAYER_MAPPING = {
+      water: "2",
+      fire: "8",
+      pressure: "4"
+    };
+    // ──────────────────────────────────────────────────────────────
+
+    // On page load, check the parent URL to light up the correct active button
+    try {
+      const parentUrl = new URL(window.parent.location.href);
+      const activeLayers = parentUrl.searchParams.get("webmap-layers") || "";
+      
+      // Loop through our mapping to see if any of our layers are currently active in the URL
+      for (const [key, id] of Object.entries(LAYER_MAPPING)) {
+        if (activeLayers.split(',').includes(id)) {
+          const btn = document.getElementById(`btn-${key}`);
+          if (btn) {
+            btn.classList.add("active");
+            btn.querySelector(".status").textContent = "On";
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not read parent URL due to cross-origin restrictions. Buttons will default to Off visual state, but clicking them will still work.", e);
+    }
+
+    function toggleLayer(layerKey) {
+      try {
+        const targetLayerId = LAYER_MAPPING[layerKey];
+        const parentUrl = new URL(window.parent.location.href);
+        
+        // Get currently visible layers from URL param (comes as a comma-separated string)
+        let currentLayersAttr = parentUrl.searchParams.get("webmap-layers");
+        let activeLayers = currentLayersAttr ? currentLayersAttr.split(",") : [];
+
+        if (activeLayers.includes(targetLayerId)) {
+          // If it's already on, remove it (Turn Off)
+          activeLayers = activeLayers.filter(id => id !== targetLayerId);
+        } else {
+          // If it's off, add it (Turn On)
+          activeLayers.push(targetLayerId);
+        }
+
+        // Update the URL parameter. If no layers are active, remove the parameter completely.
+        if (activeLayers.length > 0) {
+          parentUrl.searchParams.set("webmap-layers", activeLayers.join(","));
+        } else {
+          parentUrl.searchParams.delete("webmap-layers");
+        }
+
+        // Force the parent Experience Builder app to update to the new URL state
+        window.parent.location.href = parentUrl.toString();
+
+      } catch (error) {
+        console.error("Failed to alter parent layer state:", error);
+        alert("Cannot update map layers. Ensure the Embed widget option 'Allow cross-origin communication/sandbox' options are configured correctly.");
+      }
+    }
+  </script>
+
+</body>
+</html>
