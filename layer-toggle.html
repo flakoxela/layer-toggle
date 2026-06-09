@@ -108,6 +108,7 @@
     // CONFIGURATION — Layers to turn on
     // ─────────────────────────────────────────────
     const WEB_MAP_ID = "f6de6f76b03a47afb17cff93301d48fe"; 
+    const APP_ID = "rBo8j7ro7VIW7nGg"
     const LAYER_GROUPS = [
       {
         label: "AdminBoundaries",          // Groups
@@ -135,8 +136,20 @@
 
     require([
       "esri/WebMap",
-      "esri/views/MapView"
-    ], function(WebMap, MapView) {
+      "esri/views/MapView",
+      "esri/identity/OAuthInfo",
+      "esri/identity/IdentityManager"
+], function(WebMap, MapView, OAuthInfo, esriId) {
+
+  const info = new OAuthInfo({
+    appId: APP_ID,
+    portalUrl: "https://watermaps.tacoma.gov/portal",
+    popup: false
+  });
+  esriId.registerOAuthInfos([info]);
+
+  esriId.checkSignInStatus("https://watermaps.tacoma.gov/portal/sharing")
+    .catch(() => esriId.getCredential("https://watermaps.tacoma.gov/portal/sharing"));
 
       const statusBar = document.getElementById("statusBar");
       const btnGroup  = document.getElementById("btnGroup");
