@@ -64,20 +64,21 @@
     const APP_ID     = "HTxrCjdIyEIIs0Dx";
     const PORTAL_URL = "https://watermaps.tacoma.gov/portal";
 
+    // Using layer IDs from REST services for reliable targeting
     const LAYER_GROUPS = [
       {
         label: "Water Purveyors",
-        layerTitles: ["Water Purveyors"],
+        layerIds: [2],
         defaultVisible: false
       },
       {
         label: "Fire Districts",
-        layerTitles: ["Fire Districts"],
+        layerIds: [8],
         defaultVisible: false
       },
       {
         label: "Pressure Zone",
-        layerTitles: ["Pressure Zone"],
+        layerIds: [4],
         defaultVisible: false
       }
     ];
@@ -137,11 +138,17 @@
 
       webmap.load().then(() => {
         console.log("Map loaded! Layers found:", webmap.layers.length);
-        webmap.layers.forEach(l => {
-          console.log("Layer:", l.title);
-          if (l.layers) {
-            l.layers.forEach(sl => console.log("  Sublayer:", sl.title));
-          }
+
+        // Debug: log all layers and their layerId
+        webmap.layers.forEach(layer => {
+          layer.load().then(() => {
+            console.log("Layer:", layer.title, "| layerId:", layer.layerId, "| id:", layer.id);
+            if (layer.sublayers) {
+              layer.sublayers.forEach(sl => {
+                console.log("  Sublayer:", sl.title, "| id:", sl.id);
+              });
+            }
+          });
         });
 
         statusBar.textContent = "Map connected ✓";
@@ -149,7 +156,7 @@
 
         // Apply default visibility on load
         LAYER_GROUPS.forEach((group) => {
-          setLayerVisibility(webmap, group.layerTitles, group.defaultVisible);
+          setLayerVisibility(webmap, group.layerIds, group.defaultVisible);
         });
 
         setTimeout(() => { statusBar.textContent = ""; }, 2500);
@@ -165,29 +172,27 @@
         const isOn = states[index];
         btn.className = "toggle-btn" + (isOn ? " active" : "");
         btn.querySelector(".status").textContent = isOn ? "On" : "Off";
-        setLayerVisibility(webmap, group.layerTitles, isOn);
+        setLayerVisibility(webmap, group.layerIds, isOn);
       }
 
-      function setLayerVisibility(map, titles, visible) {
+      function setLayerVisibility(map, ids, visible) {
         map.layers.forEach(layer => {
-          // Check top level
-          if (titles.includes(layer.title)) {
-            layer.visible = visible;
-          }
-          // For AdminBoundaries — load it first then check sublayers
-          if (layer.title === "AdminBoundaries") {
-            layer.load().then(() => {
-              if (layer.layers) {
-                layer.layers.forEach(subLayer => {
-                  console.log("AdminBoundaries sublayer found:", subLayer.title);
-                  if (titles.includes(subLayer.title)) {
-                    subLayer.visible = visible;
-                    console.log("Toggled:", subLayer.title, visible);
-                  }
-                });
-              }
-            });
-          }
+          layer.load().then(() => {
+            // Check if this layer itself matches by layerId
+            if (ids.includes(layer.layerId)) {
+              layer.visible = visible;
+              console.log("Toggled layer:", layer.title, visible);
+            }
+            // Check sublayers (for MapImageLayer / group layers)
+            if (layer.sublayers) {
+              layer.sublayers.forEach(subLayer => {
+                if (ids.includes(subLayer.id)) {
+                  subLayer.visible = visible;
+                  console.log("Toggled sublayer:", subLayer.title, visible);
+                }
+              });
+            }
+          });
         });
       }
 
