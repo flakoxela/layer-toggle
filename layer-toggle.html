@@ -66,17 +66,17 @@
 
     const LAYER_GROUPS = [
       {
-        label: "AdminBoundaries",
+        label: "Water Purveyors",
         layerTitles: ["Water Purveyor"],
-        defaultVisible: true
+        defaultVisible: false
       },
       {
-        label: "Fire Zones",
+        label: "Fire Districts",
         layerTitles: ["Fire Districts"],
         defaultVisible: false
       },
       {
-        label: "Pressure Zones",
+        label: "Pressure Zone",
         layerTitles: ["Pressure Zone"],
         defaultVisible: false
       }
@@ -138,6 +138,9 @@
       webmap.load().then(() => {
         console.log("Map loaded! Layers found:", webmap.layers.length);
         webmap.layers.forEach(l => console.log("Layer:", l.title));
+        if (l.layers){l.layers.forEach(sl => console.log(" Sublayer:", sl.title));
+                     }
+      });
         statusBar.textContent = "Map connected ✓";
         statusBar.className = "status-bar ok";
 
