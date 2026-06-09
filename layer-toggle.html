@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Layer Toggle</title>
+
+  <!-- ArcGIS JS API -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/dark/main.css"/>
+  <script src="https://js.arcgis.com/4.29/"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      background: transparent;
+      padding: 12px;
+    }
+
+    h4 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toggle-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1.5px solid #d1d5db;
+      background: #ffffff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: #1f2937;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+
+    .toggle-btn:hover {
+      border-color: #0070d2;
+      background: #f0f7ff;
+    }
+
+    .toggle-btn.active {
+      background: #0070d2;
+      border-color: #0070d2;
+      color: #ffffff;
+    }
+
+    .toggle-btn .label-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toggle-btn .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #d1d5db;
+      flex-shrink: 0;
+      transition: background 0.18s;
+    }
+
+    .toggle-btn.active .dot {
+      background: #ffffff;
+    }
+
+    .toggle-btn .status {
+      font-size: 11px;
+      font-weight: 400;
+      opacity: 0.75;
+    }
+
+    .status-bar {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #9ca3af;
+      min-height: 16px;
+    }
+
+    .status-bar.error { color: #ef4444; }
+    .status-bar.ok { color: #10b981; }
+  </style>
+</head>
+<body>
+
+  <h4>Layer Controls</h4>
+
+  <div class="btn-group" id="btnGroup"></div>
+  <div class="status-bar" id="statusBar">Connecting to map…</div>
+
+  <script>
+    // ─────────────────────────────────────────────
+    // CONFIGURATION — Layers to turn on
+    // ─────────────────────────────────────────────
+    const WEB_MAP_ID = "f6de6f76b03a47afb17cff93301d48fe"; 
+    const LAYER_GROUPS = [
+      {
+        label: "AdminBoundaries",          // Groups
+        layerTitles: [                  // Layer title(s) as they appear in your web map
+          "Water Purveyor"
+        ],
+        defaultVisible: true            // true = ON by default, false = OFF by default
+      },
+      {
+        label: "Fire Zones",
+        layerTitles: [
+          "Fire Districts"
+        ],
+        defaultVisible: false
+      },
+      {
+        label: "Pressure Zones",
+        layerTitles: [
+          "Pressure Zone"
+        ],
+        defaultVisible: false
+      }
+    ];
+    // ─────────────────────────────────────────────
+
+    require([
+      "esri/WebMap",
+      "esri/views/MapView"
+    ], function(WebMap, MapView) {
+
+      const statusBar = document.getElementById("statusBar");
+      const btnGroup  = document.getElementById("btnGroup");
+
+      // Access layers, not display a map
+      const container = document.createElement("div");
+      container.style.display = "none";
+      document.body.appendChild(container);
+
+      const webmap = new WebMap({ portalItem: { id: WEB_MAP_ID } });
+      const view   = new MapView({ map: webmap, container });
+
+      // Button states
+      const states = LAYER_GROUPS.map(g => g.defaultVisible);
+
+      // Buttons
+      LAYER_GROUPS.forEach((group, i) => {
+        const btn = document.createElement("button");
+        btn.className = "toggle-btn" + (states[i] ? " active" : "");
+        btn.innerHTML = `
+          <span class="label-wrap">
+            <span class="dot"></span>
+            <span>${group.label}</span>
+          </span>
+          <span class="status">${states[i] ? "On" : "Off"}</span>
+        `;
+        btn.addEventListener("click", () => toggleGroup(i, btn, group));
+        btnGroup.appendChild(btn);
+      });
+
+      view.when(() => {
+        statusBar.textContent = "Map connected ✓";
+        statusBar.className = "status-bar ok";
+
+        //Turn on load
+        LAYER_GROUPS.forEach((group, i) => {
+          setLayerVisibility(webmap, group.layerTitles, group.defaultVisible);
+        });
+
+        setTimeout(() => {
+          statusBar.textContent = "";
+        }, 2500);
+
+      }).catch(err => {
+        statusBar.textContent = "Could not connect to map. Check Web Map ID.";
+        statusBar.className = "status-bar error";
+        console.error(err);
+      });
+
+      function toggleGroup(index, btn, group) {
+        states[index] = !states[index];
+        const isOn = states[index];
+
+        btn.className = "toggle-btn" + (isOn ? " active" : "");
+        btn.querySelector(".status").textContent = isOn ? "On" : "Off";
+
+        setLayerVisibility(webmap, group.layerTitles, isOn);
+      }
+
+      function setLayerVisibility(map, titles, visible) {
+        map.layers.forEach(layer => {
+          if (titles.includes(layer.title)) {
+            layer.visible = visible;
+          }
+          // Check group layers
+          if (layer.layers) {
+            layer.layers.forEach(subLayer => {
+              if (titles.includes(subLayer.title)) {
+                subLayer.visible = visible;
+              }
+            });
+          }
+        });
+      }
+
+    });
+  </script>
+</body>
+</html>
