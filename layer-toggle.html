@@ -137,7 +137,7 @@
 
       webmap.load().then(() => {
         console.log("Map loaded! Layers found:", webmap.layers.length);
-        webmap.layers.forEach(l => console.log("Layer:", l.title));
+        webmap.layers.forEach(l => {console.log("Layer:", l.title));
         if (l.layers){l.layers.forEach(sl => console.log(" Sublayer:", sl.title));
                      }
       });
