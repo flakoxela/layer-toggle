@@ -146,7 +146,12 @@
       container.style.display = "none";
       document.body.appendChild(container);
 
-      const webmap = new WebMap({ portalItem: { id: WEB_MAP_ID } });
+      const webmap = new WebMap({
+        portalItem: { 
+          id: WEB_MAP_ID,
+          portal: { url: "https://yourserver.yourdomain.com/portal" }
+        } 
+      });
       const view   = new MapView({ map: webmap, container });
 
       // Button states
