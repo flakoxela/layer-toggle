@@ -60,14 +60,14 @@
     // ─────────────────────────────────────────────
     // CONFIGURATION
     // ─────────────────────────────────────────────
-    const WEB_MAP_ID  = "f6de6f76b03a47afb17cff93301d48fe";
-    const APP_ID      = "HTxrCjdIyEIIs0Dx";
-    const PORTAL_URL  = "https://watermaps.tacoma.gov/portal";
+    const WEB_MAP_ID = "f6de6f76b03a47afb17cff93301d48fe";
+    const APP_ID     = "HTxrCjdIyEIIs0Dx";
+    const PORTAL_URL = "https://watermaps.tacoma.gov/portal";
 
     const LAYER_GROUPS = [
       {
         label: "Water Purveyors",
-        layerTitles: ["Water Purveyor"],
+        layerTitles: ["Water Purveyors"],
         defaultVisible: false
       },
       {
@@ -112,7 +112,7 @@
       });
       window.parent.postMessage({ type: "arcgis:auth:requestCredential" }, "*");
 
-      // Build buttons immediately — don't wait for map
+      // Build buttons immediately
       LAYER_GROUPS.forEach((group, i) => {
         const btn = document.createElement("button");
         btn.className = "toggle-btn" + (states[i] ? " active" : "");
@@ -127,7 +127,7 @@
         btnGroup.appendChild(btn);
       });
 
-      // Load the web map using PortalItem — no MapView needed
+      // Load web map
       const portalItem = new PortalItem({
         id: WEB_MAP_ID,
         portal: new Portal({ url: PORTAL_URL })
@@ -139,37 +139,18 @@
         console.log("Map loaded! Layers found:", webmap.layers.length);
         webmap.layers.forEach(l => {
           console.log("Layer:", l.title);
-          if (l.layers){
-            l.layers.forEach(sl => console.log(" Sublayer:", sl.title));
-            }
-      });
+          if (l.layers) {
+            l.layers.forEach(sl => console.log("  Sublayer:", sl.title));
+          }
+        });
+
         statusBar.textContent = "Map connected ✓";
         statusBar.className = "status-bar ok";
 
-        // Apply default visibility
+        // Apply default visibility on load
         LAYER_GROUPS.forEach((group) => {
-          function setLayerVisibility(map, titles, visible) {
-  map.layers.forEach(layer => {
-    // Check top level
-    if (titles.includes(layer.title)) {
-      layer.visible = visible;
-    }
-    // For AdminBoundaries specifically — load it first then check sublayers
-    if (layer.title === "AdminBoundaries") {
-      layer.load().then(() => {
-        if (layer.layers) {
-          layer.layers.forEach(subLayer => {
-            console.log("AdminBoundaries sublayer found:", subLayer.title);
-            if (titles.includes(subLayer.title)) {
-              subLayer.visible = visible;
-              console.log("Toggled:", subLayer.title, visible);
-            }
-          });
-        }
-      });
-    }
-  });
-}
+          setLayerVisibility(webmap, group.layerTitles, group.defaultVisible);
+        });
 
         setTimeout(() => { statusBar.textContent = ""; }, 2500);
 
@@ -189,13 +170,21 @@
 
       function setLayerVisibility(map, titles, visible) {
         map.layers.forEach(layer => {
+          // Check top level
           if (titles.includes(layer.title)) {
             layer.visible = visible;
           }
-          if (layer.layers) {
-            layer.layers.forEach(subLayer => {
-              if (titles.includes(subLayer.title)) {
-                subLayer.visible = visible;
+          // For AdminBoundaries — load it first then check sublayers
+          if (layer.title === "AdminBoundaries") {
+            layer.load().then(() => {
+              if (layer.layers) {
+                layer.layers.forEach(subLayer => {
+                  console.log("AdminBoundaries sublayer found:", subLayer.title);
+                  if (titles.includes(subLayer.title)) {
+                    subLayer.visible = visible;
+                    console.log("Toggled:", subLayer.title, visible);
+                  }
+                });
               }
             });
           }
