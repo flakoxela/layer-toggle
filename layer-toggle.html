@@ -105,30 +105,26 @@
 
   <script>
     // ─────────────────────────────────────────────
-    // CONFIGURATION — Layers to turn on
+    // CONFIGURATION
     // ─────────────────────────────────────────────
-    const WEB_MAP_ID = "f6de6f76b03a47afb17cff93301d48fe"; 
-    const APP_ID = "HTxrCjdIyEIIs0Dx"
+    const WEB_MAP_ID = "f6de6f76b03a47afb17cff93301d48fe";
+    const APP_ID = "HTxrCjdIyEIIs0Dx";
+    const PORTAL_URL = "https://watermaps.tacoma.gov/portal";
+
     const LAYER_GROUPS = [
       {
-        label: "AdminBoundaries",          // Groups
-        layerTitles: [                  // Layer title(s) as they appear in your web map
-          "Water Purveyor"
-        ],
-        defaultVisible: true            // true = ON by default, false = OFF by default
+        label: "AdminBoundaries",
+        layerTitles: ["Water Purveyor"],
+        defaultVisible: true
       },
       {
         label: "Fire Zones",
-        layerTitles: [
-          "Fire Districts"
-        ],
+        layerTitles: ["Fire Districts"],
         defaultVisible: false
       },
       {
         label: "Pressure Zones",
-        layerTitles: [
-          "Pressure Zone"
-        ],
+        layerTitles: ["Pressure Zone"],
         defaultVisible: false
       }
     ];
@@ -139,104 +135,103 @@
       "esri/views/MapView",
       "esri/identity/OAuthInfo",
       "esri/identity/IdentityManager"
-], function(WebMap, MapView, OAuthInfo, esriId) {
+    ], function(WebMap, MapView, OAuthInfo, esriId) {
 
-  const info = new OAuthInfo({
-    appId: APP_ID,
-    portalUrl: "https://watermaps.tacoma.gov/portal",
-    popup: false
-    flowType:"auto"
-  });
-  esriId.registerOAuthInfos([info]);
-
-  esriId.checkSignInStatus("https://watermaps.tacoma.gov/portal/sharing")
-  esriId.useSignInPage = false;
-  window.addEventListener("message", function(event) {
-    if (event.data && event.data.type === "arcgis:auth:credential") {
-      esriId.registerToken(event.data.credential);
-    }
-});
-
-window.parent.postMessage({ type: "arcgis:auth:requestCredential" }, "*");
-    .catch(() => esriId.getCredential("https://watermaps.tacoma.gov/portal/sharing"));
-
-      const statusBar = document.getElementById("statusBar");
-      const btnGroup  = document.getElementById("btnGroup");
-
-      // Access layers, not display a map
-      const container = document.createElement("div");
-      container.style.display = "none";
-      document.body.appendChild(container);
-
-      const webmap = new WebMap({
-        portalItem: { 
-          id: WEB_MAP_ID,
-          portal: { url: "https://watermaps.tacoma.gov/portal/apps/mapviewer/index.html?webmap" }
-        } 
+      // OAuth setup
+      const info = new OAuthInfo({
+        appId: APP_ID,
+        portalUrl: PORTAL_URL,
+        popup: false,
+        flowType: "auto"
       });
-      const view   = new MapView({ map: webmap, container });
+      esriId.registerOAuthInfos([info]);
 
-      // Button states
-      const states = LAYER_GROUPS.map(g => g.defaultVisible);
-
-      // Buttons
-      LAYER_GROUPS.forEach((group, i) => {
-        const btn = document.createElement("button");
-        btn.className = "toggle-btn" + (states[i] ? " active" : "");
-        btn.innerHTML = `
-          <span class="label-wrap">
-            <span class="dot"></span>
-            <span>${group.label}</span>
-          </span>
-          <span class="status">${states[i] ? "On" : "Off"}</span>
-        `;
-        btn.addEventListener("click", () => toggleGroup(i, btn, group));
-        btnGroup.appendChild(btn);
+      // Listen for credentials passed from parent Experience Builder app
+      esriId.useSignInPage = false;
+      window.addEventListener("message", function(event) {
+        if (event.data && event.data.type === "arcgis:auth:credential") {
+          esriId.registerToken(event.data.credential);
+        }
       });
+      window.parent.postMessage({ type: "arcgis:auth:requestCredential" }, "*");
 
-      view.when(() => {
-        statusBar.textContent = "Map connected ✓";
-        statusBar.className = "status-bar ok";
+      // Check sign in status, prompt if not signed in
+      esriId.checkSignInStatus(PORTAL_URL + "/sharing")
+        .catch(() => esriId.getCredential(PORTAL_URL + "/sharing"))
+        .finally(() => loadMap());
 
-        //Turn on load
+      function loadMap() {
+        const statusBar = document.getElementById("statusBar");
+        const btnGroup  = document.getElementById("btnGroup");
+
+        // Hidden container — access layers only, no visible map
+        const container = document.createElement("div");
+        container.style.display = "none";
+        document.body.appendChild(container);
+
+        const webmap = new WebMap({
+          portalItem: {
+            id: WEB_MAP_ID,
+            portal: { url: PORTAL_URL }
+          }
+        });
+        const view = new MapView({ map: webmap, container });
+
+        // Build buttons
+        const states = LAYER_GROUPS.map(g => g.defaultVisible);
+
         LAYER_GROUPS.forEach((group, i) => {
-          setLayerVisibility(webmap, group.layerTitles, group.defaultVisible);
+          const btn = document.createElement("button");
+          btn.className = "toggle-btn" + (states[i] ? " active" : "");
+          btn.innerHTML = `
+            <span class="label-wrap">
+              <span class="dot"></span>
+              <span>${group.label}</span>
+            </span>
+            <span class="status">${states[i] ? "On" : "Off"}</span>
+          `;
+          btn.addEventListener("click", () => toggleGroup(i, btn, group));
+          btnGroup.appendChild(btn);
         });
 
-        setTimeout(() => {
-          statusBar.textContent = "";
-        }, 2500);
+        view.when(() => {
+          statusBar.textContent = "Map connected ✓";
+          statusBar.className = "status-bar ok";
 
-      }).catch(err => {
-        statusBar.textContent = "Could not connect to map. Check Web Map ID.";
-        statusBar.className = "status-bar error";
-        console.error(err);
-      });
+          LAYER_GROUPS.forEach((group, i) => {
+            setLayerVisibility(webmap, group.layerTitles, group.defaultVisible);
+          });
 
-      function toggleGroup(index, btn, group) {
-        states[index] = !states[index];
-        const isOn = states[index];
+          setTimeout(() => { statusBar.textContent = ""; }, 2500);
 
-        btn.className = "toggle-btn" + (isOn ? " active" : "");
-        btn.querySelector(".status").textContent = isOn ? "On" : "Off";
-
-        setLayerVisibility(webmap, group.layerTitles, isOn);
-      }
-
-      function setLayerVisibility(map, titles, visible) {
-        map.layers.forEach(layer => {
-          if (titles.includes(layer.title)) {
-            layer.visible = visible;
-          }
-          // Check group layers
-          if (layer.layers) {
-            layer.layers.forEach(subLayer => {
-              if (titles.includes(subLayer.title)) {
-                subLayer.visible = visible;
-              }
-            });
-          }
+        }).catch(err => {
+          statusBar.textContent = "Could not connect to map. Check Web Map ID.";
+          statusBar.className = "status-bar error";
+          console.error(err);
         });
+
+        function toggleGroup(index, btn, group) {
+          states[index] = !states[index];
+          const isOn = states[index];
+          btn.className = "toggle-btn" + (isOn ? " active" : "");
+          btn.querySelector(".status").textContent = isOn ? "On" : "Off";
+          setLayerVisibility(webmap, group.layerTitles, isOn);
+        }
+
+        function setLayerVisibility(map, titles, visible) {
+          map.layers.forEach(layer => {
+            if (titles.includes(layer.title)) {
+              layer.visible = visible;
+            }
+            if (layer.layers) {
+              layer.layers.forEach(subLayer => {
+                if (titles.includes(subLayer.title)) {
+                  subLayer.visible = visible;
+                }
+              });
+            }
+          });
+        }
       }
 
     });
