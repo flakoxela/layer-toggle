@@ -150,6 +150,15 @@
   esriId.registerOAuthInfos([info]);
 
   esriId.checkSignInStatus("https://watermaps.tacoma.gov/portal/sharing")
+    esriId.useSignInPage = false;
+
+window.addEventListener("message", function(event) {
+  if (event.data && event.data.type === "arcgis:auth:credential") {
+    esriId.registerToken(event.data.credential);
+  }
+});
+
+window.parent.postMessage({ type: "arcgis:auth:requestCredential" }, "*");
     .catch(() => esriId.getCredential("https://watermaps.tacoma.gov/portal/sharing"));
 
       const statusBar = document.getElementById("statusBar");
